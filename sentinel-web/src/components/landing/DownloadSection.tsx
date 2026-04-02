@@ -107,7 +107,7 @@ export default function DownloadSection() {
                                         disabled
                                         className="w-full h-10 px-4 text-[14px] font-medium bg-surface-0 text-txt-muted border border-edge rounded-lg cursor-not-allowed opacity-60 flex items-center justify-center gap-2"
                                     >
-                                        Coming Soon
+                                        Coming Soon.
                                     </button>
                                 ) : platform.installCommand ? (
                                     <div className="space-y-3">
