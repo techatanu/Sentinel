@@ -97,3 +97,4 @@ class OllamaClient:
 
     def close(self):
         self.client.close()
+

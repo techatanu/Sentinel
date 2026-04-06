@@ -68,7 +68,7 @@ export default function DownloadSection() {
                     className="text-center mb-14"
                 >
                     <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold text-txt-primary tracking-tight mb-4">
-                        Download Sentinel
+                        Download Sentinel.
                     </h2>
                     <p className="text-[16px] text-txt-secondary max-w-xl mx-auto leading-relaxed">
                         Choose your platform. Desktop app or command line — same powerful engine.

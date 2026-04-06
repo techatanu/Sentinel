@@ -12,6 +12,11 @@ from sentinel_core.planner.ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
+# System Design: Single Source of Truth
+# Only rule matches above this confidence score are sent to the AI planner.
+# Change this one constant to tune sensitivity across the entire pipeline.
+MIN_RULE_CONFIDENCE = 0.8
+
 class PlannerAgent:
     def __init__(self, ollama_client: OllamaClient, model_name: str = "llama2"):
         self.client = ollama_client
@@ -59,7 +64,7 @@ class PlannerAgent:
                 "rule": r.matched_rule,
                 "category": r.suggested_category
             }
-            for r in rule_matches if r.confidence > 0.8
+            for r in rule_matches if r.confidence > MIN_RULE_CONFIDENCE
         ]
         
         # 2. Render Prompt
@@ -83,4 +88,3 @@ class PlannerAgent:
             logger.error(f"Failed to validate plan: {e}")
             logger.debug(f"Raw response: {response_data}")
             raise ValueError(f"LLM produced invalid plan schema: {e}")
-
