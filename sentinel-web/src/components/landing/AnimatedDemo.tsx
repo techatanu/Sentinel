@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+// Magic numbers pulled into a named constant so the intent is obvious
+const CYCLE_INTERVAL_MS = 2800;
+
 type TaskState = 'SCANNING' | 'PLANNING' | 'REVIEW' | 'EXECUTING' | 'COMPLETE';
 
 const states: TaskState[] = ['SCANNING', 'PLANNING', 'REVIEW', 'EXECUTING', 'COMPLETE'];
 
-const stateContent: Record<TaskState, {
-    label: string;
-    title: string;
-    lines: string[];
-}> = {
+const stateContent: Record<TaskState, { label: string; title: string; lines: string[] }> = {
     SCANNING: {
         label: 'Scan',
         title: 'sentinel scan ~/Downloads',
@@ -64,21 +64,69 @@ const stateContent: Record<TaskState, {
     },
 };
 
+// ── Sub-component: the small circle/dot indicator beside each pipeline step ───
+// Extracted so the parent list doesn't have nested conditional JSX everywhere
+function StateIndicator({ isActive, isDone }: { isActive: boolean; isDone: boolean }) {
+    return (
+        <div className={`
+            w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200
+            ${isDone
+                ? 'bg-txt-primary text-black'
+                : isActive
+                    ? 'border-2 border-txt-primary'
+                    : 'border border-edge'
+            }
+        `}>
+            {isDone && (
+                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 13l4 4L19 7" />
+                </svg>
+            )}
+            {isActive && (
+                <div className="w-1.5 h-1.5 rounded-full bg-txt-primary animate-pulse" />
+            )}
+        </div>
+    );
+}
+
+// ── Sub-component: a single animated line in the terminal output ──────────────
+// Extracted so TerminalOutput stays clean and this piece is reusable
+function TerminalLine({ text, index }: { text: string; index: number }) {
+    return (
+        <motion.p
+            initial={{ opacity: 0, x: 6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.08 }}
+            className="text-[13px] text-txt-secondary font-mono leading-relaxed flex items-start gap-2"
+        >
+            <span className="text-txt-faint shrink-0">→</span>
+            <span>{text}</span>
+        </motion.p>
+    );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function AnimatedDemo() {
     const [currentStateIndex, setCurrentStateIndex] = useState(0);
+
     const currentState = states[currentStateIndex];
     const content = stateContent[currentState];
 
+    // Derived value: what % of the pipeline is done (used for the progress bar)
+    const progressPercent = ((currentStateIndex + 1) / states.length) * 100;
+
     useEffect(() => {
         const interval = setInterval(() => {
+            // Loop back to 0 when we reach the end
             setCurrentStateIndex((prev) => (prev + 1) % states.length);
-        }, 2800);
+        }, CYCLE_INTERVAL_MS);
+
+        // Cleanup: clear the timer when the component unmounts
         return () => clearInterval(interval);
     }, []);
 
     return (
         <section id="demo" className="py-24 px-6 relative">
-            {/* Subtle gradient divider */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-px bg-gradient-to-r from-transparent via-edge to-transparent" />
 
             <div className="max-w-5xl mx-auto">
@@ -104,7 +152,8 @@ export default function AnimatedDemo() {
                     transition={{ duration: 0.4, delay: 0.1 }}
                 >
                     <div className="grid md:grid-cols-[1fr_1.2fr] gap-4">
-                        {/* State list */}
+
+                        {/* ── Pipeline state list ── */}
                         <div className="bg-surface-1 border border-edge rounded-xl p-5 space-y-1.5">
                             <p className="text-[11px] font-semibold text-txt-faint uppercase tracking-[0.12em] mb-3">
                                 Pipeline
@@ -115,33 +164,15 @@ export default function AnimatedDemo() {
                                 return (
                                     <motion.div
                                         key={state}
-                                        animate={{
-                                            backgroundColor: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
-                                        }}
+                                        animate={{ backgroundColor: isActive ? 'rgba(255,255,255,0.04)' : 'transparent' }}
                                         transition={{ duration: 0.2 }}
                                         className={`
                                             flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                                             ${isActive ? 'border border-edge' : 'border border-transparent'}
                                         `}
                                     >
-                                        <div className={`
-                                            w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200
-                                            ${isDone
-                                                ? 'bg-txt-primary text-black'
-                                                : isActive
-                                                    ? 'border-2 border-txt-primary'
-                                                    : 'border border-edge'
-                                            }
-                                        `}>
-                                            {isDone && (
-                                                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            )}
-                                            {isActive && (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-txt-primary animate-pulse" />
-                                            )}
-                                        </div>
+                                        {/* Extracted into its own component — keeps this list readable */}
+                                        <StateIndicator isActive={isActive} isDone={isDone} />
                                         <span className={`
                                             text-[14px] font-medium transition-colors duration-200
                                             ${isActive ? 'text-txt-primary' : isDone ? 'text-txt-secondary' : 'text-txt-muted'}
@@ -153,7 +184,7 @@ export default function AnimatedDemo() {
                             })}
                         </div>
 
-                        {/* Terminal output */}
+                        {/* ── Terminal output panel ── */}
                         <div className="bg-surface-1 border border-edge rounded-xl overflow-hidden">
                             <div className="flex items-center gap-2 px-4 py-3 border-b border-edge">
                                 <div className="flex gap-1.5">
@@ -177,17 +208,9 @@ export default function AnimatedDemo() {
                                             <span className="text-emerald-400">❯</span> {content.title.toLowerCase()}
                                         </p>
                                         <div className="space-y-2">
+                                            {/* Each line extracted into TerminalLine — clean loop */}
                                             {content.lines.map((line, i) => (
-                                                <motion.p
-                                                    key={i}
-                                                    initial={{ opacity: 0, x: 6 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    transition={{ delay: i * 0.08 }}
-                                                    className="text-[13px] text-txt-secondary font-mono leading-relaxed flex items-start gap-2"
-                                                >
-                                                    <span className="text-txt-faint shrink-0">→</span>
-                                                    <span>{line}</span>
-                                                </motion.p>
+                                                <TerminalLine key={i} text={line} index={i} />
                                             ))}
                                         </div>
                                     </motion.div>
@@ -200,12 +223,13 @@ export default function AnimatedDemo() {
                                     <motion.div
                                         className="h-full bg-gradient-to-r from-white/60 to-white rounded-full"
                                         initial={{ width: '0%' }}
-                                        animate={{ width: `${((currentStateIndex + 1) / states.length) * 100}%` }}
+                                        animate={{ width: `${progressPercent}%` }}
                                         transition={{ duration: 0.4 }}
                                     />
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </motion.div>
             </div>
