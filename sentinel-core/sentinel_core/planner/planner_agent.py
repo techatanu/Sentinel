@@ -8,7 +8,7 @@ from sentinel_core.models.filesystem import ScanResult
 from sentinel_core.models.planner import PlanSchema
 from sentinel_core.models.preferences import PreferencesSchema
 from sentinel_core.rules.models import RuleMatchResult
-from sentinel_core.planner.ollama_client import OllamaClient
+from sentinel_core.planner.provider import LLMProvider  # Adapter interface - NOT OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,28 @@ logger = logging.getLogger(__name__)
 MIN_RULE_CONFIDENCE = 0.8
 
 class PlannerAgent:
-    def __init__(self, ollama_client: OllamaClient, model_name: str = "llama2"):
-        self.client = ollama_client
+    """
+    Orchestrates the AI-powered planning pipeline.
+
+    This class depends on the *abstract* LLMProvider interface, not on any
+    concrete LLM implementation. This is the Adapter (Dependency Inversion)
+    Pattern: the concrete provider (OllamaClient, OpenAIProvider, etc.) is
+    injected at construction time, and the PlannerAgent remains completely
+    unaware of which backend is in use.
+
+    To swap out the LLM backend, simply pass a different LLMProvider
+    implementation to the constructor - no changes to this class needed.
+    """
+
+    def __init__(self, llm_provider: LLMProvider, model_name: str = "llama2"):
+        """
+        Args:
+            llm_provider: Any object implementing the LLMProvider interface.
+                          This could be OllamaClient, a mock for testing, or
+                          a future OpenAIProvider / GroqProvider.
+            model_name: The model identifier string to pass to the provider.
+        """
+        self.client = llm_provider
         self.model_name = model_name
         self._prompt_template = self._load_template()
 
