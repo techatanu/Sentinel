@@ -8,13 +8,13 @@ class ExecutionLogEntry(SQLModel, table=True):
     """Audit log of every action taken."""
     __tablename__ = "execution_logs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)  # explicit annotation required by Pydantic v2
     task_id: str = Field(index=True)
     timestamp: datetime = Field(default_factory=datetime.now)
     action_type: ActionType
     source_path: str
     destination_path: Optional[str] = None
-    status: str # "success", "failed", "rolled_back"
+    status: str  # "success", "failed", "rolled_back"
     error_message: Optional[str] = None
     
 class TaskRecord(SQLModel, table=True):

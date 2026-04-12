@@ -1,25 +1,41 @@
 import json
 import httpx
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+
+from sentinel_core.planner.provider import LLMProvider, LLMProviderError, LLMConnectionError, LLMGenerationError
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
-class OllamaClientError(Exception):
-    """Base exception for Ollama client errors."""
+
+# ---------------------------------------------------------------------------
+# Ollama-specific error aliases (kept for backward compatibility)
+# ---------------------------------------------------------------------------
+
+class OllamaClientError(LLMProviderError):
+    """Base exception for Ollama client errors. Inherits from LLMProviderError."""
     pass
 
-class OllamaConnectionError(OllamaClientError):
+
+class OllamaConnectionError(OllamaClientError, LLMConnectionError):
     """Failed to connect to Ollama."""
     pass
 
-class OllamaGenerationError(OllamaClientError):
+
+class OllamaGenerationError(OllamaClientError, LLMGenerationError):
     """Error during generation."""
     pass
 
-class OllamaClient:
+class OllamaClient(LLMProvider):
+    """
+    Concrete Adapter: implements LLMProvider using the Ollama REST API.
+
+    This is one specific implementation of the LLMProvider interface.
+    The PlannerAgent does NOT import this class directly - it receives an
+    LLMProvider instance via constructor injection (Dependency Inversion).
+    """
     def __init__(self, base_url: str = "http://localhost:11434", timeout: float = 30.0):
         self.base_url = base_url
         self.timeout = timeout
@@ -33,7 +49,7 @@ class OllamaClient:
         except httpx.RequestError:
             return False
 
-    def generate(self, prompt: str, model: str, temperature: float = 0.7) -> str:
+    def generate(self, prompt: str, model: str, temperature: float = 0.7, **kwargs: Any) -> str:
         """
         Generates text completion.
         """
@@ -62,7 +78,7 @@ class OllamaClient:
         retry=retry_if_exception_type((json.JSONDecodeError, OllamaGenerationError)),
         reraise=True
     )
-    def generate_json(self, prompt: str, model: str, temperature: float = 0.2) -> Dict[str, Any]:
+    def generate_json(self, prompt: str, model: str, temperature: float = 0.2, **kwargs: Any) -> Dict[str, Any]:
         """
         Generates structured JSON output. Retries if output is not valid JSON.
         """
